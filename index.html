@@ -95,62 +95,48 @@
       color: var(--muted);
     }
 
-    /* Network grid */
-    .network-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
+    /* Holdings list */
+    .holdings-list {
       border: 1px solid var(--border);
     }
-    .network-cell {
-      padding: 16px;
-      text-align: center;
-      background: var(--bg);
+    .holding-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
     }
-    .network-cell .net-label {
-      font-size: 10px;
+    .holding-row + .holding-row {
+      border-top: 1px solid var(--border);
+    }
+    .holding-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .holding-token {
+      font-size: 11px;
       font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: var(--muted);
+      letter-spacing: 0.1em;
     }
-    .network-cell .net-total {
-      margin-top: 4px;
-      font-family: var(--font-display);
-      font-size: 20px;
-      font-weight: 400;
-    }
-    .network-cell .net-detail {
-      margin-top: 2px;
+    .holding-network {
       font-size: 10px;
       color: var(--muted);
     }
-
-    /* Native balances */
-    .native-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      border: 1px solid var(--border);
-      margin-top: 12px;
+    .holding-right {
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
-    .native-cell {
-      padding: 12px;
-      text-align: center;
-      background: var(--bg);
-    }
-    .native-cell .nat-label {
-      font-size: 10px;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: var(--muted);
-    }
-    .native-cell .nat-amount {
-      margin-top: 4px;
+    .holding-amount {
       font-family: var(--font-display);
       font-size: 16px;
       font-weight: 400;
+    }
+    .holding-value {
+      font-size: 10px;
+      color: var(--muted);
     }
 
     /* Address */
@@ -354,40 +340,12 @@
       <div class="balance">
         <p class="label">Total Verified Balance</p>
         <p class="amount" id="total-balance">$0.00</p>
-        <p class="unit">USD Stablecoin</p>
       </div>
 
-      <!-- Network breakdown -->
-      <div id="network-breakdown" class="hidden">
+      <!-- Holdings (dynamically populated) -->
+      <div id="holdings" class="hidden">
         <div class="separator-sm"></div>
-        <div class="network-grid">
-          <div class="network-cell">
-            <p class="net-label">Polygon</p>
-            <p class="net-total" id="polygon-total">$0.00</p>
-            <p class="net-detail hidden" id="polygon-usdc"></p>
-            <p class="net-detail hidden" id="polygon-usdt"></p>
-          </div>
-          <div class="network-cell">
-            <p class="net-label">Ethereum</p>
-            <p class="net-total" id="ethereum-total">$0.00</p>
-            <p class="net-detail hidden" id="ethereum-usdc"></p>
-            <p class="net-detail hidden" id="ethereum-usdt"></p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Native token balances -->
-      <div id="native-breakdown" class="hidden">
-        <div class="native-grid">
-          <div class="native-cell">
-            <p class="nat-label">POL</p>
-            <p class="nat-amount" id="pol-balance">0</p>
-          </div>
-          <div class="native-cell">
-            <p class="nat-label">ETH</p>
-            <p class="nat-amount" id="eth-balance">0</p>
-          </div>
-        </div>
+        <div id="holdings-list" class="holdings-list"></div>
       </div>
 
       <div class="separator"></div>
@@ -484,8 +442,8 @@
     const $totalBalance = document.getElementById("total-balance");
     const $walletAddress = document.getElementById("wallet-address");
     const $timestamp = document.getElementById("timestamp");
-    const $networkBreakdown = document.getElementById("network-breakdown");
-    const $nativeBreakdown = document.getElementById("native-breakdown");
+    const $holdings = document.getElementById("holdings");
+    const $holdingsList = document.getElementById("holdings-list");
     const $walletNameSection = document.getElementById("wallet-name-section");
 
     if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
@@ -517,14 +475,30 @@
       }
     }
 
+    async function fetchPrices() {
+      try {
+        const res = await fetch(
+          "https://api.coingecko.com/api/v3/simple/price?ids=pol-ex-matic,ethereum&vs_currencies=usd"
+        );
+        const data = await res.json();
+        return {
+          pol: data["pol-ex-matic"]?.usd || 0,
+          eth: data["ethereum"]?.usd || 0,
+        };
+      } catch {
+        return { pol: 0, eth: 0 };
+      }
+    }
+
     async function fetchBalances() {
       const polygonProvider = new ethers.JsonRpcProvider(RPC.polygon);
       const ethereumProvider = new ethers.JsonRpcProvider(RPC.ethereum);
 
-      // Fetch all balances in parallel
+      // Fetch balances and prices in parallel
       const [
         polUsdcRaw, polUsdtRaw, polNativeRaw, polUsdcDec, polUsdtDec,
         ethUsdcRaw, ethUsdtRaw, ethNativeRaw, ethUsdcDec, ethUsdtDec,
+        prices,
       ] = await Promise.all([
         new ethers.Contract(USDC.polygon, ERC20_ABI, polygonProvider).balanceOf(address),
         new ethers.Contract(USDT.polygon, ERC20_ABI, polygonProvider).balanceOf(address),
@@ -536,6 +510,7 @@
         ethereumProvider.getBalance(address),
         new ethers.Contract(USDC.ethereum, ERC20_ABI, ethereumProvider).decimals(),
         new ethers.Contract(USDT.ethereum, ERC20_ABI, ethereumProvider).decimals(),
+        fetchPrices(),
       ]);
 
       const polUsdc = parseFloat(ethers.formatUnits(polUsdcRaw, polUsdcDec));
@@ -545,56 +520,47 @@
       const ethUsdt = parseFloat(ethers.formatUnits(ethUsdtRaw, ethUsdtDec));
       const ethNative = parseFloat(ethers.formatEther(ethNativeRaw));
 
-      const polTotal = polUsdc + polUsdt;
-      const ethTotal = ethUsdc + ethUsdt;
-      const grandTotal = polTotal + ethTotal;
+      // Build holdings list — only tokens with a balance
+      const holdings = [];
+      if (polUsdc > 0.01) holdings.push({ token: "USDC", network: "Polygon", amount: polUsdc.toFixed(2), value: polUsdc, prefix: "$" });
+      if (polUsdt > 0.01) holdings.push({ token: "USDT", network: "Polygon", amount: polUsdt.toFixed(2), value: polUsdt, prefix: "$" });
+      if (ethUsdc > 0.01) holdings.push({ token: "USDC", network: "Ethereum", amount: ethUsdc.toFixed(2), value: ethUsdc, prefix: "$" });
+      if (ethUsdt > 0.01) holdings.push({ token: "USDT", network: "Ethereum", amount: ethUsdt.toFixed(2), value: ethUsdt, prefix: "$" });
+      if (polNative > 0.0001) holdings.push({ token: "POL", network: "Polygon", amount: polNative.toFixed(4), value: polNative * prices.pol, prefix: "" });
+      if (ethNative > 0.0001) holdings.push({ token: "ETH", network: "Ethereum", amount: ethNative.toFixed(4), value: ethNative * prices.eth, prefix: "" });
 
-      // Display
+      // Total value
+      const grandTotal = holdings.reduce((sum, h) => sum + h.value, 0);
       $totalBalance.textContent = `$${grandTotal.toFixed(2)}`;
 
-      // Network breakdown (show if either network has stablecoin balance)
-      if (polTotal > 0 || ethTotal > 0) {
-        $networkBreakdown.classList.remove("hidden");
-
-        document.getElementById("polygon-total").textContent = `$${polTotal.toFixed(2)}`;
-        document.getElementById("ethereum-total").textContent = `$${ethTotal.toFixed(2)}`;
-
-        if (polUsdc > 0) {
-          const el = document.getElementById("polygon-usdc");
-          el.textContent = `USDC: $${polUsdc.toFixed(2)}`;
-          el.classList.remove("hidden");
+      // Render holdings
+      $holdingsList.innerHTML = "";
+      if (holdings.length > 0) {
+        $holdings.classList.remove("hidden");
+        for (const h of holdings) {
+          const row = document.createElement("div");
+          row.className = "holding-row";
+          row.innerHTML = `
+            <div class="holding-left">
+              <span class="holding-token">${h.token}</span>
+              <span class="holding-network">${h.network}</span>
+            </div>
+            <div class="holding-right">
+              <span class="holding-amount">${h.prefix}${h.amount}</span>
+              ${h.prefix !== "$" && h.value > 0 ? `<span class="holding-value">$${h.value.toFixed(2)}</span>` : ""}
+            </div>
+          `;
+          $holdingsList.appendChild(row);
         }
-        if (polUsdt > 0) {
-          const el = document.getElementById("polygon-usdt");
-          el.textContent = `USDT: $${polUsdt.toFixed(2)}`;
-          el.classList.remove("hidden");
-        }
-        if (ethUsdc > 0) {
-          const el = document.getElementById("ethereum-usdc");
-          el.textContent = `USDC: $${ethUsdc.toFixed(2)}`;
-          el.classList.remove("hidden");
-        }
-        if (ethUsdt > 0) {
-          const el = document.getElementById("ethereum-usdt");
-          el.textContent = `USDT: $${ethUsdt.toFixed(2)}`;
-          el.classList.remove("hidden");
-        }
-      }
-
-      // Native token balances (show if either has native tokens)
-      if (polNative > 0.0001 || ethNative > 0.0001) {
-        $nativeBreakdown.classList.remove("hidden");
-        document.getElementById("pol-balance").textContent = polNative.toFixed(4);
-        document.getElementById("eth-balance").textContent = ethNative.toFixed(4);
+      } else {
+        $holdings.classList.add("hidden");
       }
 
       // Explorer links
-      if (polTotal > 0 || polNative > 0.0001) {
-        document.getElementById("link-polygon").classList.remove("hidden");
-      }
-      if (ethTotal > 0 || ethNative > 0.0001) {
-        document.getElementById("link-ethereum").classList.remove("hidden");
-      }
+      const hasPolygon = polUsdc > 0 || polUsdt > 0 || polNative > 0.0001;
+      const hasEthereum = ethUsdc > 0 || ethUsdt > 0 || ethNative > 0.0001;
+      document.getElementById("link-polygon").classList.toggle("hidden", !hasPolygon);
+      document.getElementById("link-ethereum").classList.toggle("hidden", !hasEthereum);
 
       // Timestamp
       const now = new Date();
@@ -620,10 +586,6 @@
       this.disabled = true;
       this.querySelector("svg").style.animation = "spin 0.8s linear infinite";
       try {
-        // Reset detail visibility for re-fetch
-        ["polygon-usdc", "polygon-usdt", "ethereum-usdc", "ethereum-usdt"].forEach(id => {
-          document.getElementById(id).classList.add("hidden");
-        });
         await fetchBalances();
       } catch {
         // Silent fail on refresh
