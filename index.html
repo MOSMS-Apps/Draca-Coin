@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DRACA — Wallet Verification</title>
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --fg: #1c1917;
+      --muted: #78716c;
+      --border: #e7e5e4;
+      --green: #15803d;
+      --font-display: "Times New Roman", Georgia, serif;
+      --font-mono: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0c0a09;
+        --fg: #fafaf9;
+        --muted: #a8a29e;
+        --border: #292524;
+        --green: #22c55e;
+      }
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .separator {
+      height: 1px;
+      background: var(--border);
+      margin: 32px 0;
+    }
+
+    .separator-sm {
+      height: 1px;
+      background: var(--border);
+      margin: 24px 0;
+    }
+
+    /* Branding */
+    .brand { text-align: center; }
+    .brand h1 {
+      font-family: var(--font-display);
+      font-size: 30px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+    }
+    .brand p {
+      margin-top: 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+    }
+
+    /* Balance */
+    .balance { text-align: center; }
+    .balance .label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+    .balance .amount {
+      margin-top: 12px;
+      font-family: var(--font-display);
+      font-size: 48px;
+      font-weight: 400;
+    }
+    .balance .unit {
+      margin-top: 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    /* Network grid */
+    .network-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      border: 1px solid var(--border);
+    }
+    .network-cell {
+      padding: 16px;
+      text-align: center;
+      background: var(--bg);
+    }
+    .network-cell .net-label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+    .network-cell .net-total {
+      margin-top: 4px;
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 400;
+    }
+    .network-cell .net-detail {
+      margin-top: 2px;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* Native balances */
+    .native-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      border: 1px solid var(--border);
+      margin-top: 12px;
+    }
+    .native-cell {
+      padding: 12px;
+      text-align: center;
+      background: var(--bg);
+    }
+    .native-cell .nat-label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+    .native-cell .nat-amount {
+      margin-top: 4px;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 400;
+    }
+
+    /* Address */
+    .address-section .addr-label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+    }
+    .address-box {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .address-box .addr-text {
+      flex: 1;
+      word-break: break-all;
+      border: 1px solid var(--border);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .copy-btn, .action-btn {
+      flex-shrink: 0;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-btn {
+      padding: 8px;
+      border: none;
+    }
+    .copy-btn:hover, .action-btn:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    /* Timestamp */
+    .timestamp {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* Actions */
+    .actions {
+      margin-top: 32px;
+      display: flex;
+      gap: 12px;
+    }
+    .action-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      color: var(--fg);
+    }
+
+    .explorer-links {
+      margin-top: 12px;
+      display: flex;
+      gap: 12px;
+    }
+    .explorer-link {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .explorer-link:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    /* Loading / error states */
+    .state-msg {
+      text-align: center;
+      padding: 80px 0;
+    }
+    .state-msg p {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--muted);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    /* Wallet name */
+    .wallet-name {
+      margin-top: 8px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* No address prompt */
+    .prompt-section { text-align: center; }
+    .prompt-section h2 {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 400;
+    }
+    .prompt-section p {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .prompt-section code {
+      display: block;
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Branding (always visible) -->
+    <div class="brand">
+      <h1>DRACA</h1>
+      <p>Physical Crypto Verification</p>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loading" class="hidden">
+      <div class="separator"></div>
+      <div class="state-msg">
+        <div class="spinner"></div>
+        <p>Reading blockchain...</p>
+      </div>
+    </div>
+
+    <!-- No address prompt -->
+    <div id="no-address" class="hidden">
+      <div class="separator"></div>
+      <div class="prompt-section">
+        <h2>Verify a Wallet</h2>
+        <p>Add a wallet address to the URL to verify its balance:</p>
+        <code>?address=0x1234...abcd</code>
+      </div>
+    </div>
+
+    <!-- Error state -->
+    <div id="error" class="hidden">
+      <div class="separator"></div>
+      <div class="state-msg">
+        <p id="error-msg">Failed to read balances</p>
+      </div>
+    </div>
+
+    <!-- Wallet content -->
+    <div id="wallet-content" class="hidden">
+      <div id="wallet-name-section" class="wallet-name hidden"></div>
+
+      <div class="separator"></div>
+
+      <!-- Total Balance -->
+      <div class="balance">
+        <p class="label">Total Verified Balance</p>
+        <p class="amount" id="total-balance">$0.00</p>
+        <p class="unit">USD Stablecoin</p>
+      </div>
+
+      <!-- Network breakdown -->
+      <div id="network-breakdown" class="hidden">
+        <div class="separator-sm"></div>
+        <div class="network-grid">
+          <div class="network-cell">
+            <p class="net-label">Polygon</p>
+            <p class="net-total" id="polygon-total">$0.00</p>
+            <p class="net-detail hidden" id="polygon-usdc"></p>
+            <p class="net-detail hidden" id="polygon-usdt"></p>
+          </div>
+          <div class="network-cell">
+            <p class="net-label">Ethereum</p>
+            <p class="net-total" id="ethereum-total">$0.00</p>
+            <p class="net-detail hidden" id="ethereum-usdc"></p>
+            <p class="net-detail hidden" id="ethereum-usdt"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Native token balances -->
+      <div id="native-breakdown" class="hidden">
+        <div class="native-grid">
+          <div class="native-cell">
+            <p class="nat-label">POL</p>
+            <p class="nat-amount" id="pol-balance">0</p>
+          </div>
+          <div class="native-cell">
+            <p class="nat-label">ETH</p>
+            <p class="nat-amount" id="eth-balance">0</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="separator"></div>
+
+      <!-- Address -->
+      <div class="address-section">
+        <p class="addr-label">Wallet Address</p>
+        <div class="address-box">
+          <p class="addr-text" id="wallet-address"></p>
+          <button class="copy-btn" id="copy-btn" title="Copy address">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Timestamp -->
+      <p class="timestamp" id="timestamp"></p>
+
+      <!-- Actions -->
+      <div class="actions">
+        <button class="action-btn" id="refresh-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      <!-- Explorer links -->
+      <div class="explorer-links">
+        <a id="link-polygon" class="explorer-link hidden" target="_blank" rel="noopener noreferrer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Polygonscan
+        </a>
+        <a id="link-ethereum" class="explorer-link hidden" target="_blank" rel="noopener noreferrer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Etherscan
+        </a>
+      </div>
+    </div>
+
+    <p class="footer">This is a public verification page. No login required.</p>
+  </div>
+
+  <!-- ethers.js v6 from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+  <script>
+    // Contract addresses
+    const USDC = {
+      polygon: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+      ethereum: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    };
+    const USDT = {
+      polygon: "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+      ethereum: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    };
+    const RPC = {
+      polygon: "https://polygon-rpc.com",
+      ethereum: "https://eth.llamarpc.com",
+    };
+    const EXPLORER = {
+      polygon: "https://polygonscan.com",
+      ethereum: "https://etherscan.io",
+    };
+    const ERC20_ABI = [
+      "function balanceOf(address owner) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+    ];
+
+    // Get address from URL
+    const params = new URLSearchParams(window.location.search);
+    const address = params.get("address");
+    const walletName = params.get("name");
+
+    // DOM elements
+    const $loading = document.getElementById("loading");
+    const $noAddress = document.getElementById("no-address");
+    const $error = document.getElementById("error");
+    const $errorMsg = document.getElementById("error-msg");
+    const $content = document.getElementById("wallet-content");
+    const $totalBalance = document.getElementById("total-balance");
+    const $walletAddress = document.getElementById("wallet-address");
+    const $timestamp = document.getElementById("timestamp");
+    const $networkBreakdown = document.getElementById("network-breakdown");
+    const $nativeBreakdown = document.getElementById("native-breakdown");
+    const $walletNameSection = document.getElementById("wallet-name-section");
+
+    if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
+      $noAddress.classList.remove("hidden");
+    } else {
+      init();
+    }
+
+    async function init() {
+      $loading.classList.remove("hidden");
+      $walletAddress.textContent = address;
+
+      if (walletName) {
+        $walletNameSection.textContent = walletName;
+        $walletNameSection.classList.remove("hidden");
+      }
+
+      // Set up explorer links
+      document.getElementById("link-polygon").href = `${EXPLORER.polygon}/address/${address}`;
+      document.getElementById("link-ethereum").href = `${EXPLORER.ethereum}/address/${address}`;
+
+      try {
+        await fetchBalances();
+      } catch (err) {
+        $loading.classList.add("hidden");
+        $error.classList.remove("hidden");
+        $errorMsg.textContent = "Failed to read balances. Please try again.";
+      }
+    }
+
+    async function fetchBalances() {
+      const polygonProvider = new ethers.JsonRpcProvider(RPC.polygon);
+      const ethereumProvider = new ethers.JsonRpcProvider(RPC.ethereum);
+
+      // Fetch all balances in parallel
+      const [
+        polUsdcRaw, polUsdtRaw, polNativeRaw, polUsdcDec, polUsdtDec,
+        ethUsdcRaw, ethUsdtRaw, ethNativeRaw, ethUsdcDec, ethUsdtDec,
+      ] = await Promise.all([
+        new ethers.Contract(USDC.polygon, ERC20_ABI, polygonProvider).balanceOf(address),
+        new ethers.Contract(USDT.polygon, ERC20_ABI, polygonProvider).balanceOf(address),
+        polygonProvider.getBalance(address),
+        new ethers.Contract(USDC.polygon, ERC20_ABI, polygonProvider).decimals(),
+        new ethers.Contract(USDT.polygon, ERC20_ABI, polygonProvider).decimals(),
+        new ethers.Contract(USDC.ethereum, ERC20_ABI, ethereumProvider).balanceOf(address),
+        new ethers.Contract(USDT.ethereum, ERC20_ABI, ethereumProvider).balanceOf(address),
+        ethereumProvider.getBalance(address),
+        new ethers.Contract(USDC.ethereum, ERC20_ABI, ethereumProvider).decimals(),
+        new ethers.Contract(USDT.ethereum, ERC20_ABI, ethereumProvider).decimals(),
+      ]);
+
+      const polUsdc = parseFloat(ethers.formatUnits(polUsdcRaw, polUsdcDec));
+      const polUsdt = parseFloat(ethers.formatUnits(polUsdtRaw, polUsdtDec));
+      const polNative = parseFloat(ethers.formatEther(polNativeRaw));
+      const ethUsdc = parseFloat(ethers.formatUnits(ethUsdcRaw, ethUsdcDec));
+      const ethUsdt = parseFloat(ethers.formatUnits(ethUsdtRaw, ethUsdtDec));
+      const ethNative = parseFloat(ethers.formatEther(ethNativeRaw));
+
+      const polTotal = polUsdc + polUsdt;
+      const ethTotal = ethUsdc + ethUsdt;
+      const grandTotal = polTotal + ethTotal;
+
+      // Display
+      $totalBalance.textContent = `$${grandTotal.toFixed(2)}`;
+
+      // Network breakdown (show if either network has stablecoin balance)
+      if (polTotal > 0 || ethTotal > 0) {
+        $networkBreakdown.classList.remove("hidden");
+
+        document.getElementById("polygon-total").textContent = `$${polTotal.toFixed(2)}`;
+        document.getElementById("ethereum-total").textContent = `$${ethTotal.toFixed(2)}`;
+
+        if (polUsdc > 0) {
+          const el = document.getElementById("polygon-usdc");
+          el.textContent = `USDC: $${polUsdc.toFixed(2)}`;
+          el.classList.remove("hidden");
+        }
+        if (polUsdt > 0) {
+          const el = document.getElementById("polygon-usdt");
+          el.textContent = `USDT: $${polUsdt.toFixed(2)}`;
+          el.classList.remove("hidden");
+        }
+        if (ethUsdc > 0) {
+          const el = document.getElementById("ethereum-usdc");
+          el.textContent = `USDC: $${ethUsdc.toFixed(2)}`;
+          el.classList.remove("hidden");
+        }
+        if (ethUsdt > 0) {
+          const el = document.getElementById("ethereum-usdt");
+          el.textContent = `USDT: $${ethUsdt.toFixed(2)}`;
+          el.classList.remove("hidden");
+        }
+      }
+
+      // Native token balances (show if either has native tokens)
+      if (polNative > 0.0001 || ethNative > 0.0001) {
+        $nativeBreakdown.classList.remove("hidden");
+        document.getElementById("pol-balance").textContent = polNative.toFixed(4);
+        document.getElementById("eth-balance").textContent = ethNative.toFixed(4);
+      }
+
+      // Explorer links
+      if (polTotal > 0 || polNative > 0.0001) {
+        document.getElementById("link-polygon").classList.remove("hidden");
+      }
+      if (ethTotal > 0 || ethNative > 0.0001) {
+        document.getElementById("link-ethereum").classList.remove("hidden");
+      }
+
+      // Timestamp
+      const now = new Date();
+      $timestamp.textContent = `Last verified: ${now.toLocaleDateString("en-GB", {
+        day: "numeric", month: "long", year: "numeric",
+      })} ${now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+
+      // Show content, hide loading
+      $loading.classList.add("hidden");
+      $content.classList.remove("hidden");
+    }
+
+    // Copy button
+    document.getElementById("copy-btn").addEventListener("click", function () {
+      navigator.clipboard.writeText(address).then(() => {
+        this.title = "Copied!";
+        setTimeout(() => { this.title = "Copy address"; }, 2000);
+      });
+    });
+
+    // Refresh button
+    document.getElementById("refresh-btn").addEventListener("click", async function () {
+      this.disabled = true;
+      this.querySelector("svg").style.animation = "spin 0.8s linear infinite";
+      try {
+        // Reset detail visibility for re-fetch
+        ["polygon-usdc", "polygon-usdt", "ethereum-usdc", "ethereum-usdt"].forEach(id => {
+          document.getElementById(id).classList.add("hidden");
+        });
+        await fetchBalances();
+      } catch {
+        // Silent fail on refresh
+      }
+      this.disabled = false;
+      this.querySelector("svg").style.animation = "";
+    });
+  </script>
+</body>
+</html>
