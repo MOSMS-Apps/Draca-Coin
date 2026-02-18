@@ -458,8 +458,8 @@
       ethereum: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
     };
     const RPC = {
-      polygon: "https://polygon-rpc.com",
-      ethereum: "https://eth.llamarpc.com",
+      polygon: "https://polygon-bor-rpc.publicnode.com",
+      ethereum: "https://ethereum-rpc.publicnode.com",
     };
     const EXPLORER = {
       polygon: "https://polygonscan.com",
@@ -512,7 +512,8 @@
       } catch (err) {
         $loading.classList.add("hidden");
         $error.classList.remove("hidden");
-        $errorMsg.textContent = "Failed to read balances. Please try again.";
+        $errorMsg.textContent = "Failed to read balances: " + (err.message || err);
+        console.error("Balance fetch error:", err);
       }
     }
 
