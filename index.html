@@ -476,18 +476,38 @@
     }
 
     async function fetchPrices() {
+      // Try CoinGecko first
       try {
         const res = await fetch(
           "https://api.coingecko.com/api/v3/simple/price?ids=polygon-ecosystem-token,ethereum&vs_currencies=usd"
         );
-        const data = await res.json();
-        return {
-          pol: data["polygon-ecosystem-token"]?.usd || 0,
-          eth: data["ethereum"]?.usd || 0,
-        };
-      } catch {
-        return { pol: 0, eth: 0 };
+        if (res.ok) {
+          const data = await res.json();
+          const pol = data["polygon-ecosystem-token"]?.usd || 0;
+          const eth = data["ethereum"]?.usd || 0;
+          if (pol > 0 || eth > 0) return { pol, eth };
+        }
+      } catch (e) {
+        console.warn("CoinGecko failed:", e);
       }
+
+      // Fallback: DeFi Llama (no rate limits, no API key needed)
+      try {
+        const res = await fetch(
+          "https://coins.llama.fi/prices/current/coingecko:polygon-ecosystem-token,coingecko:ethereum"
+        );
+        if (res.ok) {
+          const data = await res.json();
+          return {
+            pol: data.coins?.["coingecko:polygon-ecosystem-token"]?.price || 0,
+            eth: data.coins?.["coingecko:ethereum"]?.price || 0,
+          };
+        }
+      } catch (e) {
+        console.warn("DeFi Llama failed:", e);
+      }
+
+      return { pol: 0, eth: 0 };
     }
 
     async function fetchBalances() {
