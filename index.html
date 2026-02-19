@@ -478,11 +478,11 @@
     async function fetchPrices() {
       try {
         const res = await fetch(
-          "https://api.coingecko.com/api/v3/simple/price?ids=pol-ex-matic,ethereum&vs_currencies=usd"
+          "https://api.coingecko.com/api/v3/simple/price?ids=polygon-ecosystem-token,ethereum&vs_currencies=usd"
         );
         const data = await res.json();
         return {
-          pol: data["pol-ex-matic"]?.usd || 0,
+          pol: data["polygon-ecosystem-token"]?.usd || 0,
           eth: data["ethereum"]?.usd || 0,
         };
       } catch {
