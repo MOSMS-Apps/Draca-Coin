@@ -317,8 +317,7 @@
       <div class="separator"></div>
       <div class="prompt-section">
         <h2>Verify a Wallet</h2>
-        <p>Add a wallet address to the URL to verify its balance:</p>
-        <code>?address=0x1234...abcd</code>
+        <p>Add an encoded wallet reference to the URL to verify its balance.</p>
       </div>
     </div>
 
@@ -428,10 +427,15 @@
       "function decimals() view returns (uint8)",
     ];
 
-    // Get address from URL
+    // Get address from URL — supports encoded (?w=base64) or plain (?address=0x...)
     const params = new URLSearchParams(window.location.search);
-    const address = params.get("address");
     const walletName = params.get("name");
+    let address = null;
+    if (params.get("w")) {
+      try { address = atob(params.get("w")); } catch { address = null; }
+    } else {
+      address = params.get("address");
+    }
 
     // DOM elements
     const $loading = document.getElementById("loading");
