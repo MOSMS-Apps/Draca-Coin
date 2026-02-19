@@ -453,6 +453,14 @@
     if (!address || !address.match(/^0x[a-fA-F0-9]{40}$/)) {
       $noAddress.classList.remove("hidden");
     } else {
+      // Replace URL bar with encoded version so the address isn't visible
+      if (params.get("address")) {
+        const encoded = btoa(address);
+        const newParams = new URLSearchParams();
+        newParams.set("w", encoded);
+        if (walletName) newParams.set("name", walletName);
+        history.replaceState(null, "", "?" + newParams.toString());
+      }
       init();
     }
 
